@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Vending Machine</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f7f7f7; }
+        .product-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            padding: 15px;
+            margin: 20px;
+            display: inline-block;
+            width: 250px;
+            vertical-align: top;
+        }
+        img { width: 100%; height: 160px; object-fit: cover; border-radius: 8px; }
+        .btn {
+            background-color: #2196F3;
+            border: none;
+            color: white;
+            padding: 10px 14px;
+            font-size: 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        input[type=number] {
+            width: 60px;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Portable Medihouse</h2>
+
+    {% for p in products %}
+    <div class="product-card">
+        <img src="/static/{{p.image}}" alt="{{p.name}}">
+        <h3>{{ p.name }}</h3>
+        <p>{{ p.description }}</p>
+        <p><strong>Stock:</strong> {{ p.stock }}</p>
+
+        <label>Quantity:</label>
+        <input type="number" id="qty{{p.id}}" value="1" min="1" onchange="updateTotal({{p.id}})">
+        <p id="price{{p.id}}">Total: ₹--</p>
+
+        <button class="btn" onclick="startPayment({{p.id}})">Pay & Dispense</button>
+    </div>
+    {% endfor %}
+
+    <script>
+    async function updateTotal(pid) {
+        const qty = parseInt(document.getElementById('qty' + pid).value);
+        const res = await fetch('/get_price_link', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({product_id: pid, quantity: qty})
+        });
+        const data = await res.json();
+        if (res.ok) {
+            document.getElementById('price' + pid).innerText = 'Total: ₹' + data.price;
+        } else {
+            document.getElementById('price' + pid).innerText = 'Price not available';
+        }
+    }
+
+    async function startPayment(pid) {
+        const qty = parseInt(document.getElementById('qty' + pid).value);
+        const res = await fetch('/get_price_link', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({product_id: pid, quantity: qty})
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            alert(data.error || "Failed to fetch payment link");
+            return;
+        }
+
+        // Save transaction
+        await fetch('/record_transaction', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({product_id: pid, quantity: qty, payment_link: data.link})
+        });
+
+        // Redirect to payment
+        window.open(data.link, '_blank');
+
+        // After manual payment, trigger confirmation
+        if (confirm("Payment done? Click OK to confirm.")) {
+            const confirmRes = await fetch('/confirm_payment', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({product_id: pid, quantity: qty})
+            });
+
+            const result = await confirmRes.json();
+            alert(result.success ? "Item dispensed!" : "Failed: " + result.message);
+        }
+    }
+    </script>
+</body>
+</html>
