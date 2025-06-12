@@ -2,7 +2,7 @@ name: Update App
 
 on:
  push:
-   branches: [main]
+   branches: [master]
 
 permissions:
   contents: read
@@ -16,4 +16,4 @@ jobs:
      - name: Deploy the app
        uses: digitalocean/app_action/deploy@v2
        with:
-         token: ${{ secrets.dop_v1_ef8b412dc313e0e3cb7c52d31ab80c790055cb01af57a38fb1b9e6ffc15fc110}}
+         token: ${{ secrets.dop_v1_6b246c5117dcdff23abc7e761fee7779e221488cbd7b674e9ada79c7ea6e742e}}
